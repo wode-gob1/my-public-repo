@@ -1,0 +1,36 @@
+name: Linux Sandbox
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        description: '会话超时时间（分钟），默认 30 分钟，最大 360 分钟'
+        required: false
+        default: '30'
+        type: string
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout 仓库代码
+        uses: actions/checkout@v4
+
+      - name: 安装常用工具
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            curl wget vim nano tree htop \
+            build-essential gdb strace ltrace \
+            python3 python3-pip python3-venv \
+            nodejs npm \
+            netcat-openbsd dnsutils iputils-ping \
+            jq unzip zip
+
+      - name: 启动 SSH 会话（通过 tmate）
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+          timeout-minutes: ${{ github.event.inputs.timeout || 30 }}
