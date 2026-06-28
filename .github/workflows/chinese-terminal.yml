@@ -43,13 +43,13 @@ jobs:
           echo "用户输入: ${{ github.event.inputs.command }}"
 
           # 构建 prompt
-          RESPONSE=$(curl -s https://api.deepseek.com/chat/completions \
+          RESPONSE=$(curl -s https://apihub.agnes-ai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.AGNES_API_KEY }}" \
             -d "$(jq -n \
               --arg msg "${{ github.event.inputs.command }}" \
               '{
-                model: "deepseek-chat",
+                model: "agnes-2.0-flash",
                 messages: [
                   {
                     role: "system",
