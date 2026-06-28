@@ -3,16 +3,20 @@ name: Linux Sandbox
 on:
   workflow_dispatch:
 
+# 授权工作流可以写仓库（用于自动保存）
+permissions:
+  contents: write
+
 jobs:
   sandbox:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
-      - name: Checkout 仓库代码
+      - name: 拉取仓库代码（恢复上次保存的内容）
         uses: actions/checkout@v4
 
-      - name: 安装常用工具
+      - name: 安装系统工具
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
@@ -21,10 +25,35 @@ jobs:
             python3 python3-pip python3-venv \
             nodejs npm \
             netcat-openbsd dnsutils iputils-ping \
-            jq unzip zip
+            jq unzip zip git
 
-      - name: 启动 SSH 会话（通过 tmate）
+      - name: 运行自动安装脚本
+        run: |
+          if [ -f setup.sh ]; then
+            echo "=== 运行 setup.sh ==="
+            bash setup.sh
+            echo "=== setup.sh 完成 ==="
+          else
+            echo "未找到 setup.sh，跳过自动安装"
+          fi
+
+      - name: 启动 SSH 会话
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
           connect-timeout-seconds: 600
+
+      - name: 自动保存到仓库
+        if: always()
+        run: |
+          echo "=== 会话结束，开始自动保存 ==="
+          git config user.email "sandbox@github.com"
+          git config user.name "Sandbox Bot"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要保存的更改"
+          else
+            git commit -m "Sandbox: 自动保存会话内容 ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git push origin main
+            echo "=== 保存成功！==="
+          fi
