@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精美网页计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .calculator {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            width: 340px;
+        }
+
+        .display {
+            background: #1a1a2e;
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: right;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .expression {
+            font-size: 16px;
+            color: #aaa;
+            min-height: 24px;
+            word-wrap: break-word;
+        }
+
+        .result {
+            font-size: 36px;
+            font-weight: bold;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            padding: 18px;
+            font-size: 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .btn-number {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-number:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-operator {
+            background: #ff9500;
+            color: #fff;
+        }
+
+        .btn-operator:hover {
+            background: #e08900;
+        }
+
+        .btn-clear {
+            background: #ff3b30;
+            color: #fff;
+        }
+
+        .btn-clear:hover {
+            background: #e0352b;
+        }
+
+        .btn-equals {
+            background: #34c759;
+            color: #fff;
+            grid-column: span 2;
+        }
+
+        .btn-equals:hover {
+            background: #2da84e;
+        }
+
+        .btn-zero {
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="display">
+            <div class="expression" id="expression"></div>
+            <div class="result" id="result">0</div>
+        </div>
+        <div class="buttons">
+            <button class="btn-clear" onclick="clearAll()">C</button>
+            <button class="btn-operator" onclick="backspace()">⌫</button>
+            <button class="btn-operator" onclick="appendOperator('%')">%</button>
+            <button class="btn-operator" onclick="appendOperator('/')">÷</button>
+
+            <button class="btn-number" onclick="appendNumber('7')">7</button>
+            <button class="btn-number" onclick="appendNumber('8')">8</button>
+            <button class="btn-number" onclick="appendNumber('9')">9</button>
+            <button class="btn-operator" onclick="appendOperator('*')">×</button>
+
+            <button class="btn-number" onclick="appendNumber('4')">4</button>
+            <button class="btn-number" onclick="appendNumber('5')">5</button>
+            <button class="btn-number" onclick="appendNumber('6')">6</button>
+            <button class="btn-operator" onclick="appendOperator('-')">−</button>
+
+            <button class="btn-number" onclick="appendNumber('1')">1</button>
+            <button class="btn-number" onclick="appendNumber('2')">2</button>
+            <button class="btn-number" onclick="appendNumber('3')">3</button>
+            <button class="btn-operator" onclick="appendOperator('+')">+</button>
+
+            <button class="btn-number btn-zero" onclick="appendNumber('0')">0</button>
+            <button class="btn-number" onclick="appendDot()">.</button>
+            <button class="btn-equals" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '';
+        let expression = '';
+        let shouldResetInput = false;
+
+        const resultDisplay = document.getElementById('result');
+        const expressionDisplay = document.getElementById('expression');
+
+        function updateDisplay() {
+            resultDisplay.textContent = currentInput || '0';
+            expressionDisplay.textContent = expression;
+        }
+
+        function appendNumber(num) {
+            if (shouldResetInput) {
+                currentInput = '';
+                shouldResetInput = false;
+            }
+            if (currentInput === '' && num === '0') return;
+            if (currentInput.length > 12) return;
+            currentInput += num;
+            updateDisplay();
+        }
+
+        function appendDot() {
+            if (shouldResetInput) {
+                currentInput = '';
+                shouldResetInput = false;
+            }
+            if (currentInput.includes('.')) return;
+            if (currentInput === '') {
+                currentInput = '0';
+            }
+            currentInput += '.';
+            updateDisplay();
+        }
+
+        function appendOperator(op) {
+            if (currentInput === '' && expression === '') return;
+            
+            if (currentInput !== '') {
+                expression += currentInput + ' ' + op + ' ';
+                currentInput = '';
+                shouldResetInput = true;
+            } else {
+                // Replace last operator
+                expression = expression.trimEnd().slice(0, -1) + ' ' + op + ' ';
+            }
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentInput = '';
+            expression = '';
+            shouldResetInput = false;
+            updateDisplay();
+        }
+
+        function backspace() {
+            if (shouldResetInput) return;
+            currentInput = currentInput.slice(0, -1);
+            updateDisplay();
+        }
+
+        function calculate() {
+            if (currentInput === '' && expression === '') return;
+            
+            let fullExpression = expression + currentInput;
+            if (!fullExpression.trim()) return;
+
+            try {
+                // 安全地计算表达式
+                let evalExpr = fullExpression
+                    .replace(/×/g, '*')
+                    .replace(/÷/g, '/')
+                    .replace(/−/g, '-')
+                    .replace(/%/g, '/100*');
+                
+                // 验证表达式只包含数字和运算符
+                if (/[^0-9+\-*/. %]/.test(evalExpr)) {
+                    throw new Error('Invalid expression');
+                }
+
+                let result = Function('"use strict";return (' + evalExpr + ')')();
+                
+                if (!isFinite(result)) {
+                    resultDisplay.textContent = '错误';
+                    return;
+                }
+
+                // 格式化结果
+                result = parseFloat(result.toFixed(10));
+                expression = fullExpression + ' =';
+                currentInput = String(result);
+                shouldResetInput = true;
+                updateDisplay();
+            } catch (e) {
+                resultDisplay.textContent = '错误';
+                currentInput = '';
+                expression = '';
+                shouldResetInput = false;
+                updateDisplay();
+            }
+        }
+
+        // 键盘支持
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
+            else if (e.key === '.') appendDot();
+            else if (e.key === '+') appendOperator('+');
+            else if (e.key === '-') appendOperator('-');
+            else if (e.key === '*') appendOperator('*');
+            else if (e.key === '/') { e.preventDefault(); appendOperator('/'); }
+            else if (e.key === '%') appendOperator('%');
+            else if (e.key === 'Enter' || e.key === '=') calculate();
+            else if (e.key === 'Escape') clearAll();
+            else if (e.key === 'Backspace') backspace();
+        });
+
+        updateDisplay();
+    </script>
+</body>
+</html>
+```
