@@ -352,8 +352,12 @@ def auto_save():
         result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True, cwd=WORK_DIR)
         if result.returncode == 0:
             return "没有需要保存的更改"
-        subprocess.run(["git", "commit", "-m", "AI Coder: 任务执行结果"], capture_output=True, cwd=WORK_DIR)
-        subprocess.run(["git", "push", "origin", "main"], capture_output=True, timeout=30, cwd=WORK_DIR)
+        commit = subprocess.run(["git", "commit", "-m", "AI Coder: 任务执行结果"], capture_output=True, text=True, cwd=WORK_DIR)
+        if commit.returncode != 0:
+            return f"commit 失败: {commit.stderr}"
+        push = subprocess.run(["git", "push", "origin", "main"], capture_output=True, text=True, timeout=30, cwd=WORK_DIR)
+        if push.returncode != 0:
+            return f"push 失败: {push.stderr}"
         return "已保存到 GitHub 仓库"
     except Exception as e:
         return f"保存失败: {e}"
