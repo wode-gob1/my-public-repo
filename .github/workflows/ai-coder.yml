@@ -1,0 +1,66 @@
+name: AI Coder - 编程助手
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: '输入中文任务（例如：帮我写一个 Python 爬虫，抓取百度新闻标题）'
+        required: true
+        type: string
+  push:
+    paths:
+      - 'task.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 安装系统工具
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            curl wget vim nano tree htop \
+            build-essential gdb strace ltrace \
+            python3 python3-pip python3-venv \
+            nodejs npm \
+            netcat-openbsd dnsutils iputils-ping \
+            jq unzip zip git
+
+      - name: 运行 setup.sh
+        run: |
+          if [ -f setup.sh ]; then
+            bash setup.sh
+          fi
+
+      - name: 执行 AI 编程助手
+        run: |
+          # 从触发方式获取任务
+          if [ -n "${{ github.event.inputs.task }}" ]; then
+            echo "任务来源: 手动触发"
+            python3 ai_coder.py "${{ github.event.inputs.task }}"
+          else
+            echo "任务来源: task.txt 文件变更"
+            python3 ai_coder.py
+          fi
+
+      - name: 自动保存到仓库
+        if: always()
+        run: |
+          git config user.email "ai-coder@github.com"
+          git config user.name "AI Coder"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要保存的更改"
+          else
+            git commit -m "AI Coder: 任务执行结果"
+            git push origin main
+            echo "=== 已保存到仓库 ==="
+          fi
