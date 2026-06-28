@@ -2,12 +2,6 @@ name: Linux Sandbox
 
 on:
   workflow_dispatch:
-    inputs:
-      timeout:
-        description: '会话超时时间（分钟），默认 30 分钟，最大 360 分钟'
-        required: false
-        default: '30'
-        type: string
 
 jobs:
   sandbox:
@@ -33,4 +27,4 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
-          timeout-minutes: ${{ github.event.inputs.timeout || 30 }}
+          connect-timeout-seconds: 600
