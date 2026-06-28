@@ -45,7 +45,7 @@ jobs:
           # 构建 prompt
           RESPONSE=$(curl -s https://apihub.agnes-ai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.AGNES_API_KEY }}" \
+            -H "Authorization: Bearer sk-E9uN06wGYJQKTj5rSBB2adVIkyehJhcZxyLIWeMMDX2pJ6Gc" \
             -d "$(jq -n \
               --arg msg "${{ github.event.inputs.command }}" \
               '{
