@@ -488,23 +488,15 @@ def run(task: str) -> str:
             time.sleep(5)
             continue
 
-        # 打印完整响应（调试用）
+        # 打印完整响应
         print(response)
 
-        # 检查任务完成
-        if "TASK_COMPLETE" in response:
-            print(f"\n{'='*60}")
-            print(f"  任务完成！共 {round_num} 轮")
-            print(f"{'='*60}")
-            return response
-
-        # 解析工具调用
+        # 先解析工具调用（优先于 TASK_COMPLETE 检查）
         tool_name, args = parse_tool_call(response)
 
         if tool_name and tool_name in TOOLS:
             no_tool_count = 0
 
-            # 打印执行信息
             arg_summary = ", ".join(
                 f"{k}={str(v)[:80]}..." if len(str(v)) > 80 else f"{k}={v}"
                 for k, v in args.items()
@@ -516,17 +508,41 @@ def run(task: str) -> str:
 
             messages.append({"role": "assistant", "content": response})
             messages.append({"role": "user", "content": f"工具执行结果:\n{result}\n\n请继续下一步。"})
+
+            # 工具执行后，如果 AI 同时输出了 TASK_COMPLETE，检查任务是否真的完成
+            if "TASK_COMPLETE" in response:
+                print(f"\n  [检测到 TASK_COMPLETE + 工具调用，工具已执行]")
+                print(f"\n{'='*60}")
+                print(f"  任务完成！共 {round_num} 轮")
+                print(f"{'='*60}")
+                return response
+
+        elif "TASK_COMPLETE" in response:
+            # 没有工具调用但有 TASK_COMPLETE
+            print(f"\n{'='*60}")
+            print(f"  任务完成！共 {round_num} 轮")
+            print(f"{'='*60}")
+            return response
+
         else:
             no_tool_count += 1
 
-            # 死循环检测：连续 3 轮没有调用工具
-            if no_tool_count >= 3:
-                print(f"  [警告] 连续 {no_tool_count} 轮未调用工具，强制要求行动")
-                messages.append({"role": "assistant", "content": response})
-                messages.append({"role": "user", "content": "请立即调用一个工具来推进任务！使用 TOOL/ARG 格式。如果任务已完成，输出 TASK_COMPLETE。"})
+            # 检查是否有 ARG 但没有 TOOL（格式错误）
+            has_arg = any(line.strip().startswith("ARG:") for line in response.split("\n"))
+            has_tool = any(line.strip().startswith("TOOL:") for line in response.split("\n"))
+
+            if has_arg and not has_tool:
+                hint = "你的格式错误！缺少 TOOL: 行。正确格式：\nTOOL: write_file\nARG: path: guess.py\nARG: content:\n..."
+            elif no_tool_count >= 3:
+                hint = "请立即调用一个工具来推进任务！使用 TOOL/ARG 格式。如果任务已完成，输出 TASK_COMPLETE。"
             else:
-                messages.append({"role": "assistant", "content": response})
-                messages.append({"role": "user", "content": "请继续执行任务。使用 TOOL/ARG 格式调用工具。"})
+                hint = "请继续执行任务。使用 TOOL/ARG 格式调用工具。"
+
+            if no_tool_count >= 3:
+                print(f"  [警告] 连续 {no_tool_count} 轮未调用工具")
+
+            messages.append({"role": "assistant", "content": response})
+            messages.append({"role": "user", "content": hint})
 
     print(f"\n  达到最大轮数 ({MAX_ROUNDS})")
     return "达到最大轮数"
