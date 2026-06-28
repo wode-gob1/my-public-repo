@@ -82,4 +82,3 @@ def test_calculator():
 
 if __name__ == "__main__":
     test_calculator()
-</ARG:
