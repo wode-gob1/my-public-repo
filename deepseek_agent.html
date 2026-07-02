@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>DeepSeek AI Agent</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ========== 全局重置 & 基础 ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 12px;
+        }
+        /* ========== 手机容器 ========== */
+        .phone-container {
+            width: 100%;
+            max-width: 420px;
+            height: 780px;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        /* ========== 顶部导航 ========== */
+        .app-header {
+            background: linear-gradient(135deg, #4a6cf7, #6a3de8);
+            padding: 18px 20px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .app-header .title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .app-header .title i { font-size: 22px; }
+        .app-header .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .app-header .header-actions button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            opacity: 0.9;
+        }
+        .app-header .header-actions button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            opacity: 1;
+        }
+        .app-header .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-left: 4px;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        /* ========== 消息列表 ========== */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 14px 8px;
+            background: #f8f9fc;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+        .messages-container::-webkit-scrollbar { width: 4px; }
+        .messages-container::-webkit-scrollbar-thumb { background: #cdd0d8; border-radius: 8px; }
+        .messages-container::-webkit-scrollbar-track { background: transparent; }
+        /* ========== 消息气泡 ========== */
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 88%;
+            animation: msg-in 0.25s ease-out;
+        }
+        @keyframes msg-in {
+            0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .message.user { align-self: flex-end; align-items: flex-end; }
+        .message.assistant { align-self: flex-start; align-items: flex-start; }
+        .message.system { align-self: center; align-items: center; max-width: 92%; }
+        .message .bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.55;
+            word-break: break-word;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+        .message.user .bubble {
+            background: #4a6cf7;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .message.assistant .bubble {
+            background: #ffffff;
+            color: #1e293b;
+            border: 1px solid #e9edf4;
+            border-bottom-left-radius: 4px;
+        }
+        .message.system .bubble {
+            background: #eef2f7;
+            color: #64748b;
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 20px;
+        }
+        .message .bubble .tool-badge {
+            display: inline-block;
+            background: rgba(74, 108, 247, 0.12);
+            color: #4a6cf7;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+        .message.assistant .bubble .tool-badge { background: rgba(74, 108, 247, 0.08); }
+        .message .bubble .msg-time {
+            font-size: 10px;
+            opacity: 0.6;
+            margin-top: 6px;
+            display: block;
+            text-align: right;
+        }
+        .message.user .bubble .msg-time { color: rgba(255, 255, 255, 0.7); }
+        .message.assistant .bubble .msg-time { color: #94a3b8; }
+        /* ========== 图片消息 ========== */
+        .message .bubble img.generated-img,
+        .message .bubble img.uploaded-img {
+            max-width: 100%;
+            border-radius: 12px;
+            margin: 6px 0 4px;
+            display: block;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        /* ========== 代码块 ========== */
+        .message .bubble pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 6px 0 2px;
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+            position: relative;
+        }
+        .message .bubble pre code {
+            font-family: inherit;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .message .bubble .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #94a3b8;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .message .bubble .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #e2e8f0;
+        }
+        /* ========== 打字指示器 ========== */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 12px 18px;
+            background: #ffffff;
+            border: 1px solid #e9edf4;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            gap: 5px;
+        }
+        .typing-indicator.active { display: flex; }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: typing-bounce 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+        /* ========== 底部输入区 ========== */
+        .input-area {
+            padding: 10px 14px 14px;
+            background: #ffffff;
+            border-top: 1px solid #e9edf4;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .input-area .input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            background: #f1f4f9;
+            border-radius: 24px;
+            padding: 4px 6px 4px 16px;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .input-area .input-wrapper:focus-within {
+            border-color: #4a6cf7;
+            background: #ffffff;
+        }
+        .input-area .input-wrapper textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 0;
+            font-size: 15px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            color: #1e293b;
+            min-height: 24px;
+            max-height: 120px;
+        }
+        .input-area .input-wrapper textarea::placeholder { color: #94a3b8; }
+        .input-area .input-wrapper .attach-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px 6px;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s;
+        }
+        .input-area .input-wrapper .attach-btn:hover {
+            background: rgba(0, 0, 0, 0.04);
+            color: #4a6cf7;
+        }
+        .input-area .send-btn {
+            background: #4a6cf7;
+            border: none;
+            color: #fff;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(74, 108, 247, 0.3);
+        }
+        .input-area .send-btn:hover { background: #3a5cd9; }
+        .input-area .send-btn:active { transform: scale(0.92); }
+        .input-area .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        /* ========== 设置弹窗 ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(6px);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fade-in 0.25s ease-out;
+        }
+        .modal-overlay.active { display: flex; }
+        @keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+        .modal {
+            background: #ffffff;
+            border-radius: 28px;
+            max-width: 400px;
+            width: 100%;
+            padding: 28px 24px 24px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
+            animation: slide-up 0.3s ease-out;
+        }
+        @keyframes slide-up {
+            0% { transform: translateY(30px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .modal .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal .modal-title i { color: #4a6cf7; }
+        .modal .modal-sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+        .modal .form-group { margin-bottom: 18px; }
+        .modal .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        .modal .form-group input,
+        .modal .form-group select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #f8fafc;
+            font-family: inherit;
+        }
+        .modal .form-group input:focus,
+        .modal .form-group select:focus {
+            border-color: #4a6cf7;
+            background: #ffffff;
+        }
+        .modal .form-group .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .modal .form-group .key-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .modal .form-group .key-status .valid { color: #22c55e; }
+        .modal .form-group .key-status .invalid { color: #ef4444; }
+        .modal .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .modal .modal-actions button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .modal .modal-actions button:active { transform: scale(0.97); }
+        .modal .modal-actions .btn-primary { background: #4a6cf7; color: #fff; }
+        .modal .modal-actions .btn-primary:hover { background: #3a5cd9; }
+        .modal .modal-actions .btn-secondary { background: #f1f4f9; color: #1e293b; }
+        .modal .modal-actions .btn-secondary:hover { background: #e2e8f0; }
+        .modal .modal-actions .btn-danger { background: #fee2e2; color: #dc2626; }
+        .modal .modal-actions .btn-danger:hover { background: #fecaca; }
+        /* ========== 文件输入隐藏 ========== */
+        #fileInput { display: none; }
+        /* ========== 工具调用状态 ========== */
+        .tool-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #64748b;
+            padding: 4px 12px;
+            background: #f1f4f9;
+            border-radius: 20px;
+            margin: 2px 0 4px;
+        }
+        .tool-status .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #4a6cf7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ========== 响应式微调 ========== */
+        @media (max-width: 460px) {
+            body { padding: 0; }
+            .phone-container {
+                border-radius: 0;
+                height: 100vh;
+                max-height: 100vh;
+                max-width: 100%;
+                box-shadow: none;
+            }
+            .app-header { padding: 14px 16px 12px; border-radius: 0; }
+            .messages-container { padding: 12px 12px 4px; }
+            .input-area { padding: 8px 12px 12px; }
+            .modal { margin: 12px; padding: 22px 18px 18px; }
+        }
+        /* ========== 滚动条美化 ========== */
+        .messages-container { scrollbar-width: thin; scrollbar-color: #cdd0d8 transparent; }
+        /* ========== 空状态 ========== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #94a3b8;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .empty-state i { font-size: 56px; color: #cdd5e0; margin-bottom: 16px; }
+        .empty-state h3 { color: #1e293b; font-weight: 600; margin-bottom: 6px; }
+        .empty-state p { font-size: 14px; max-width: 260px; line-height: 1.6; }
+        .empty-state .tool-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+            justify-content: center;
+        }
+        .empty-state .tool-tags span {
+            background: #eef2f7;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 手机容器 ==================== -->
+    <div class="phone-container" id="app">
+
+        <!-- 顶部栏 -->
+        <header class="app-header">
+            <div class="title">
+                <i class="fas fa-robot"></i>
+                DeepSeek Agent
+                <span class="status-dot"></span>
+            </div>
+            <div class="header-actions">
+                <button id="clearBtn" title="清空对话" aria-label="清空对话">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <button id="settingsBtn" title="设置" aria-label="设置">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 消息列表 -->
+        <div class="messages-container" id="messagesContainer">
+            <!-- 空状态 -->
+            <div class="empty-state" id="emptyState">
+                <i class="fas fa-comment-dots"></i>
+                <h3>你好！我是 DeepSeek Agent</h3>
+                <p>我可以帮你搜索、编程、生成图片、分析图片。试试对我说：</p>
+                <div class="tool-tags">
+                    <span>🔍 搜索一下...</span>
+                    <span>💻 写个Python脚本</span>
+                    <span>🎨 生成一张猫的图片</span>
+                    <span>📷 分析这张图片</span>
+                </div>
+            </div>
+            <!-- 动态消息会渲染到这里 -->
+            <!-- 打字指示器 -->
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- 底部输入区 -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <button class="attach-btn" id="attachBtn" aria-label="附件">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <textarea id="messageInput" rows="1" placeholder="输入消息..." aria-label="输入消息"></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" aria-label="发送">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 设置弹窗 ==================== -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-title">
+                <i class="fas fa-cog"></i> 设置
+            </div>
+            <div class="modal-sub">配置 DeepSeek API Key 和工具选项</div>
+
+            <div class="form-group">
+                <label for="apiKeyInput">DeepSeek API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-..." />
+                <div class="key-status" id="keyStatus">
+                    <span class="invalid">⚠️ 未配置</span>
+                </div>
+                <div class="hint">用于对话、代码、图片分析 · 从 <a href="https://platform.deepseek.com/" target="_blank" style="color:#4a6cf7;">DeepSeek 平台</a> 获取</div>
+            </div>
+
+            <div class="form-group">
+                <label for="modelSelect">模型</label>
+                <select id="modelSelect">
+                    <option value="deepseek-chat">deepseek-chat (推荐，支持工具调用)</option>
+                    <option value="deepseek-reasoner">deepseek-reasoner (R1 深度思考)</option>
+                    <option value="deepseek-vision">deepseek-vision (图片分析)</option>
+                </select>
+                <div class="hint">图片分析请选 deepseek-vision；reasoner 暂不支持工具调用</div>
+            </div>
+
+            <div class="form-group">
+                <label for="searchApiKey">搜索 API Key (可选)</label>
+                <input type="password" id="searchApiKey" placeholder="SerpAPI Key 或留空使用模拟搜索" />
+                <div class="hint">用于真实网络搜索 · 留空则使用模拟搜索结果</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="modalCloseBtn">取消</button>
+                <button class="btn-primary" id="modalSaveBtn">保存</button>
+            </div>
+            <div style="margin-top:12px; text-align:center;">
+                <button class="btn-danger" id="modalClearKeyBtn" style="padding:8px 20px; border:none; border-radius:10px; font-size:13px; cursor:pointer; background:#fee2e2; color:#dc2626;">
+                    <i class="fas fa-trash-alt"></i> 清除所有密钥
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 隐藏的文件输入 ==================== -->
+    <input type="file" id="fileInput" accept="image/*" multiple="false" />
+
+    <script>
+        // ======================================================================
+        //  🧠  DeepSeek AI Agent - 完整 JavaScript
+        // ======================================================================
+
+        // ---------- DOM 引用 ----------
+        const dom = {
+            messagesContainer: document.getElementById('messagesContainer'),
+            emptyState: document.getElementById('emptyState'),
+            typingIndicator: document.getElementById('typingIndicator'),
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            attachBtn: document.getElementById('attachBtn'),
+            fileInput: document.getElementById('fileInput'),
+            settingsBtn: document.getElementById('settingsBtn'),
+            settingsModal: document.getElementById('settingsModal'),
+            modalCloseBtn: document.getElementById('modalCloseBtn'),
+            modalSaveBtn: document.getElementById('modalSaveBtn'),
+            modalClearKeyBtn: document.getElementById('modalClearKeyBtn'),
+            apiKeyInput: document.getElementById('apiKeyInput'),
+            searchApiKey: document.getElementById('searchApiKey'),
+            modelSelect: document.getElementById('modelSelect'),
+            keyStatus: document.getElementById('keyStatus'),
+            clearBtn: document.getElementById('clearBtn'),
+        };
+
+        // ---------- 状态 ----------
+        const state = {
+            apiKey: '',
+            searchKey: '',
+            model: 'deepseek-chat',
+            messages: [], // { role, content, toolCalls?, toolCallId? }
+            isProcessing: false,
+            pendingImage: null, // 用户上传的图片 base64
+        };
+
+        const API_BASE = 'https://api.deepseek.com';
+
+        // ---------- 工具定义 (DeepSeek Function Calling) ----------
+        const TOOLS = [{
+            type: 'function',
+            function: {
+                name: 'search_web',
+                description: '搜索互联网获取最新、准确的信息，并汇总成简洁的回答。适用于查询新闻、事实、百科等。',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        query: { type: 'string', description: '搜索关键词，尽量具体' },
+                    },
+                    required: ['query'],
+                },
+            },
+        }, {
+            type: 'function',
+            function: {
+                name: 'write_code',
+                description: '根据需求编写、解释或调试代码。支持多种编程语言。',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        task: { type: 'string', description: '编程任务描述，包括语言、功能等' },
+                        language: { type: 'string', description: '编程语言，如 Python, JavaScript, Java 等' },
+                    },
+                    required: ['task'],
+                },
+            },
+        }, {
+            type: 'function',
+            function: {
+                name: 'generate_image',
+                description: '根据文字描述生成一张图片。',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        prompt: { type: 'string', description: '图片描述，越详细越好' },
+                        size: { type: 'string', enum: ['1024x1024', '1792x1024', '1024x1792'], description: '图片尺寸' },
+                    },
+                    required: ['prompt'],
+                },
+            },
+        }, {
+            type: 'function',
+            function: {
+                name: 'analyze_image',
+                description: '分析用户上传的图片内容，回答关于图片的问题。需要用户先上传图片。',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        question: { type: 'string', description: '关于图片的问题' },
+                    },
+                    required: ['question'],
+                },
+            },
+        }];
+
+        // ---------- 工具执行函数 ----------
+        async function executeTool(toolName, args) {
+            switch (toolName) {
+                case 'search_web': return await searchWeb(args.query);
+                case 'write_code': return await writeCode(args.task, args.language);
+                case 'generate_image': return await generateImage(args.prompt, args.size || '1024x1024');
+                case 'analyze_image': return await analyzeImage(args.question);
+                default: return { error: `未知工具: ${toolName}` };
+            }
+        }
+
+        // ----- 1. 搜索工具 -----
+        async function searchWeb(query) {
+            if (state.searchKey && state.searchKey.trim().length > 0) {
+                try {
+                    const url = `https://serpapi.com/search?q=${encodeURIComponent(query)}&api_key=${state.searchKey}&num=5`;
+                    const resp = await fetch(url);
+                    const data = await resp.json();
+                    if (data.organic_results && data.organic_results.length > 0) {
+                        const results = data.organic_results.slice(0, 5).map(r =>
+                            `• ${r.title}\n  ${r.snippet}\n  ${r.link}`
+                        ).join('\n\n');
+                        return {
+                            result: `🔍 搜索结果 (${data.organic_results.length} 条):\n\n${results}`,
+                            raw: data,
+                        };
+                    } else {
+                        return { result: `🔍 未找到关于 "${query}" 的结果，请尝试其他关键词。` };
+                    }
+                } catch (e) {
+                    console.warn('搜索API调用失败，使用模拟搜索:', e);
+                    return mockSearch(query);
+                }
+            } else {
+                return mockSearch(query);
+            }
+        }
+
+        function mockSearch(query) {
+            const mockData = {
+                '天气': '🌤️ 今日天气晴朗，气温22-28°C，适合户外活动。',
+                '新闻': '📰 今日头条：AI 技术持续发展，多国发布监管框架。',
+                'python': '🐍 Python 是一种高级编程语言，以简洁易读著称，广泛应用于数据科学、AI、Web开发等。',
+                'javascript': '📜 JavaScript 是 Web 开发的必备语言，支持前端交互与后端 Node.js 开发。',
+                'deepseek': '🤖 DeepSeek 是国产大模型公司，推出了 DeepSeek-V3、DeepSeek-R1 等模型。',
+                'default': `📚 关于 "${query}" 的搜索结果：\n\n• 相关文章与资料较多，建议进一步细化搜索词。\n• 可尝试在百度/Google 搜索获取更全面信息。`,
+            };
+            let text = mockData['default'];
+            for (const [key, val] of Object.entries(mockData)) {
+                if (query.toLowerCase().includes(key)) { text = val; break; }
+            }
+            return { result: `🔍 模拟搜索结果 (关于 "${query}"):\n\n${text}\n\n💡 配置 SerpAPI Key 可获取真实搜索结果。` };
+        }
+
+        // ----- 2. 编程工具 -----
+        async function writeCode(task, language = 'Python') {
+            return {
+                result: `📝 请为以下任务生成 ${language} 代码：\n\n${task}\n\n请提供完整的代码实现，并附上必要的注释。`,
+                language,
+                task,
+            };
+        }
+
+        // ----- 3. 图片生成工具 (Pollinations AI，免费无需Key) -----
+        async function generateImage(prompt, size = '1024x1024') {
+            try {
+                const [w, h] = size.split('x').map(Number);
+                const seed = Math.floor(Math.random() * 1000000);
+                const encoded = encodeURIComponent(prompt);
+                const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true`;
+                // 验证图片可访问
+                await fetch(imageUrl, { method: 'HEAD', mode: 'no-cors' }).catch(() => {});
+                return {
+                    result: `🎨 图片已生成！\n\n描述: ${prompt}\n尺寸: ${size}`,
+                    imageUrl: imageUrl,
+                };
+            } catch (e) {
+                console.error('图片生成异常:', e);
+                return { error: `图片生成异常: ${e.message}` };
+            }
+        }
+
+        // ----- 4. 图片分析工具 (DeepSeek Vision) -----
+        async function analyzeImage(question) {
+            if (!state.pendingImage) {
+                return { error: '请先上传一张图片。点击输入框旁的 📎 按钮选择图片。' };
+            }
+            if (!state.apiKey || state.apiKey.trim().length === 0) {
+                return { error: '请先配置 DeepSeek API Key 才能分析图片。' };
+            }
+            try {
+                const resp = await fetch(`${API_BASE}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-vision',
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                { type: 'text', text: question || '请描述这张图片的内容。' },
+                                { type: 'image_url', image_url: { url: state.pendingImage } },
+                            ],
+                        }],
+                        max_tokens: 1024,
+                    }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    return { error: `图片分析失败: ${err.error?.message || resp.statusText}` };
+                }
+                const data = await resp.json();
+                const analysis = data.choices?.[0]?.message?.content || '无法分析图片。';
+                return { result: `📷 图片分析结果:\n\n${analysis}` };
+            } catch (e) {
+                console.error('图片分析异常:', e);
+                return { error: `图片分析异常: ${e.message}` };
+            }
+        }
+
+        // ---------- 核心 AI 对话 ----------
+        async function sendMessage(userContent, imageBase64 = null) {
+            if (state.isProcessing) return;
+            if (!state.apiKey || state.apiKey.trim().length === 0) {
+                addSystemMessage('⚠️ 请先点击右上角 ⚙️ 设置 DeepSeek API Key。');
+                return;
+            }
+            if (!userContent.trim() && !imageBase64) return;
+
+            state.isProcessing = true;
+            dom.sendBtn.disabled = true;
+            dom.messageInput.disabled = true;
+            dom.emptyState.style.display = 'none';
+
+            if (imageBase64) state.pendingImage = imageBase64;
+
+            const userMsg = { role: 'user', content: userContent.trim() || '请分析这张图片。' };
+            if (imageBase64) {
+                addMessage('user', userMsg.content, imageBase64);
+            } else {
+                addMessage('user', userMsg.content);
+            }
+            state.messages.push(userMsg);
+
+            dom.typingIndicator.classList.add('active');
+            scrollToBottom();
+
+            try {
+                const apiMessages = buildApiMessages();
+                const response = await callDeepSeek(apiMessages, state.model === 'deepseek-reasoner' ? [] : TOOLS);
+                await handleDeepSeekResponse(response);
+            } catch (error) {
+                console.error('AI 请求失败:', error);
+                addSystemMessage(`❌ 请求失败: ${error.message}`);
+            } finally {
+                state.isProcessing = false;
+                dom.sendBtn.disabled = false;
+                dom.messageInput.disabled = false;
+                dom.typingIndicator.classList.remove('active');
+                dom.messageInput.focus();
+                scrollToBottom();
+            }
+        }
+
+        // 构建 API 消息列表
+        function buildApiMessages() {
+            const msgs = [];
+            for (const m of state.messages) {
+                if (m.role === 'system') continue;
+                if (m.role === 'assistant' && m.toolCalls) {
+                    msgs.push({ role: 'assistant', content: m.content || null, tool_calls: m.toolCalls });
+                } else if (m.role === 'tool') {
+                    msgs.push({ role: 'tool', tool_call_id: m.toolCallId, content: m.content });
+                } else {
+                    msgs.push({ role: m.role, content: m.content });
+                }
+            }
+            return msgs;
+        }
+
+        // 调用 DeepSeek API
+        async function callDeepSeek(messages, tools) {
+            const body = {
+                model: state.model,
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 4096,
+            };
+            if (tools && tools.length > 0) {
+                body.tools = tools;
+                body.tool_choice = 'auto';
+            }
+            const resp = await fetch(`${API_BASE}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.error?.message || resp.statusText);
+            }
+            return await resp.json();
+        }
+
+        // 处理 DeepSeek 响应 (包括工具调用)
+        async function handleDeepSeekResponse(response) {
+            const choice = response.choices?.[0];
+            if (!choice) { addSystemMessage('⚠️ 未收到有效响应。'); return; }
+
+            const message = choice.message;
+            const reasoning = message.reasoning_content;
+            if (reasoning) addMessage('assistant', `🤔 思考过程:\n${reasoning}`);
+
+            const toolCalls = message.tool_calls;
+
+            if (toolCalls && toolCalls.length > 0) {
+                const assistantMsg = { role: 'assistant', content: message.content || null, toolCalls: toolCalls };
+                state.messages.push(assistantMsg);
+
+                for (const tc of toolCalls) {
+                    const toolName = tc.function.name;
+                    const args = JSON.parse(tc.function.arguments);
+                    addSystemMessage(`🔧 正在调用工具: ${getToolDisplayName(toolName)} ...`);
+                    const result = await executeTool(toolName, args);
+                    let content = result.error || result.result || '工具执行完成。';
+                    const imageUrl = result.imageUrl || null;
+                    state.messages.push({ role: 'tool', tool_call_id: tc.id, content: content });
+                    if (imageUrl) addMessage('assistant', content, imageUrl);
+                    else addMessage('assistant', content);
+                }
+
+                dom.typingIndicator.classList.add('active');
+                scrollToBottom();
+
+                const apiMessages = buildApiMessages();
+                const finalResponse = await callDeepSeek(apiMessages, state.model === 'deepseek-reasoner' ? [] : TOOLS);
+                const finalChoice = finalResponse.choices?.[0];
+                if (finalChoice) {
+                    const finalMsg = finalChoice.message;
+                    if (finalMsg.content) {
+                        addMessage('assistant', finalMsg.content);
+                        state.messages.push({ role: 'assistant', content: finalMsg.content });
+                    } else if (finalMsg.tool_calls) {
+                        await handleDeepSeekResponse(finalResponse);
+                        return;
+                    }
+                } else {
+                    addSystemMessage('⚠️ 工具调用后未收到最终回复。');
+                }
+            } else {
+                const content = message.content;
+                if (content) {
+                    addMessage('assistant', content);
+                    state.messages.push({ role: 'assistant', content: content });
+                } else {
+                    addSystemMessage('⚠️ 助手未返回任何内容。');
+                }
+            }
+        }
+
+        // 获取工具显示名称
+        function getToolDisplayName(name) {
+            const map = {
+                'search_web': '🔍 搜索',
+                'write_code': '💻 编程',
+                'generate_image': '🎨 图片生成',
+                'analyze_image': '📷 图片分析',
+            };
+            return map[name] || name;
+        }
+
+        // ---------- UI 渲染 ----------
+        function addMessage(role, content, imageUrl = null) {
+            const container = dom.messagesContainer;
+            dom.emptyState.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            let htmlContent = formatContent(content);
+            if (imageUrl) {
+                if (imageUrl.startsWith('data:image')) {
+                    htmlContent += `<img src="${imageUrl}" class="uploaded-img" alt="上传图片" />`;
+                } else {
+                    htmlContent += `<img src="${imageUrl}" class="generated-img" alt="生成的图片" />`;
+                }
+            }
+            bubble.innerHTML = htmlContent;
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'msg-time';
+            timeSpan.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            bubble.appendChild(timeSpan);
+
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            scrollToBottom();
+
+            msgDiv.querySelectorAll('pre').forEach(pre => {
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i> 复制';
+                copyBtn.addEventListener('click', () => {
+                    const code = pre.querySelector('code')?.textContent || pre.textContent;
+                    navigator.clipboard.writeText(code).then(() => {
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        setTimeout(() => copyBtn.innerHTML = '<i class="fas fa-copy"></i> 复制', 2000);
+                    }).catch(() => {
+                        const range = document.createRange();
+                        range.selectNode(pre);
+                        window.getSelection().removeAllRanges();
+                        window.getSelection().addRange(range);
+                        document.execCommand('copy');
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        setTimeout(() => copyBtn.innerHTML = '<i class="fas fa-copy"></i> 复制', 2000);
+                    });
+                });
+                pre.style.position = 'relative';
+                pre.appendChild(copyBtn);
+            });
+
+            return msgDiv;
+        }
+
+        function addSystemMessage(text) {
+            const container = dom.messagesContainer;
+            dom.emptyState.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message system';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function formatContent(text) {
+            let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                return `<pre><code>${code.trim()}</code></pre>`;
+            });
+            html = html.replace(/`([^`]+)`/g, '<code style="background:#eef2f7;padding:1px 6px;border-radius:4px;font-size:0.9em;">$1</code>');
+            html = html.replace(/\n/g, '<br />');
+            html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#4a6cf7;text-decoration:underline;">$1</a>');
+            return html;
+        }
+
+        function scrollToBottom() {
+            const container = dom.messagesContainer;
+            setTimeout(() => container.scrollTop = container.scrollHeight, 50);
+        }
+
+        // ---------- 设置管理 ----------
+        function loadSettings() {
+            const savedKey = localStorage.getItem('deepseek_api_key') || '';
+            const savedSearchKey = localStorage.getItem('search_api_key') || '';
+            const savedModel = localStorage.getItem('deepseek_model') || 'deepseek-chat';
+
+            state.apiKey = savedKey;
+            state.searchKey = savedSearchKey;
+            state.model = savedModel;
+
+            dom.apiKeyInput.value = savedKey;
+            dom.searchApiKey.value = savedSearchKey;
+            dom.modelSelect.value = savedModel;
+
+            updateKeyStatus();
+        }
+
+        function saveSettings() {
+            const key = dom.apiKeyInput.value.trim();
+            const searchKey = dom.searchApiKey.value.trim();
+            const model = dom.modelSelect.value;
+
+            state.apiKey = key;
+            state.searchKey = searchKey;
+            state.model = model;
+
+            localStorage.setItem('deepseek_api_key', key);
+            localStorage.setItem('search_api_key', searchKey);
+            localStorage.setItem('deepseek_model', model);
+
+            updateKeyStatus();
+            dom.settingsModal.classList.remove('active');
+            addSystemMessage('✅ 设置已保存');
+        }
+
+        function updateKeyStatus() {
+            const status = dom.keyStatus;
+            if (state.apiKey && state.apiKey.startsWith('sk-')) {
+                status.innerHTML = `<span class="valid">✅ API Key 已配置 (${state.apiKey.slice(0,8)}...) </span>`;
+            } else if (state.apiKey) {
+                status.innerHTML = `<span class="invalid">⚠️ API Key 格式似乎不正确 (应以 sk- 开头)</span>`;
+            } else {
+                status.innerHTML = `<span class="invalid">⚠️ 未配置 API Key</span>`;
+            }
+        }
+
+        function clearAllKeys() {
+            localStorage.removeItem('deepseek_api_key');
+            localStorage.removeItem('search_api_key');
+            localStorage.removeItem('deepseek_model');
+            state.apiKey = '';
+            state.searchKey = '';
+            dom.apiKeyInput.value = '';
+            dom.searchApiKey.value = '';
+            updateKeyStatus();
+            addSystemMessage('🗑️ 所有密钥已清除');
+            dom.settingsModal.classList.remove('active');
+        }
+
+        // ---------- 事件绑定 ----------
+        function handleSend() {
+            const text = dom.messageInput.value.trim();
+            if (text || state.pendingImage) {
+                sendMessage(text, state.pendingImage || null);
+                dom.messageInput.value = '';
+                dom.messageInput.style.height = 'auto';
+            }
+        }
+
+        dom.messageInput.addEventListener('input', () => {
+            dom.messageInput.style.height = 'auto';
+            dom.messageInput.style.height = Math.min(dom.messageInput.scrollHeight, 120) + 'px';
+        });
+
+        dom.messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        dom.sendBtn.addEventListener('click', handleSend);
+
+        dom.attachBtn.addEventListener('click', () => dom.fileInput.click());
+
+        dom.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                addSystemMessage('⚠️ 请选择图片文件。');
+                dom.fileInput.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const base64 = ev.target.result;
+                state.pendingImage = base64;
+                addSystemMessage(`📷 已上传图片: ${file.name} (${Math.round(file.size/1024)}KB)，可发送消息进行分析。`);
+                dom.fileInput.value = '';
+                dom.messageInput.focus();
+            };
+            reader.onerror = () => {
+                addSystemMessage('⚠️ 图片读取失败，请重试。');
+                dom.fileInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        dom.clearBtn.addEventListener('click', () => {
+            if (state.messages.length === 0) return;
+            if (confirm('确定要清空所有对话吗？')) {
+                state.messages = [];
+                state.pendingImage = null;
+                const container = dom.messagesContainer;
+                container.querySelectorAll('.message').forEach(el => el.remove());
+                dom.emptyState.style.display = 'flex';
+                dom.typingIndicator.classList.remove('active');
+                addSystemMessage('🗑️ 对话已清空');
+            }
+        });
+
+        dom.settingsBtn.addEventListener('click', () => {
+            dom.apiKeyInput.value = state.apiKey;
+            dom.searchApiKey.value = state.searchKey;
+            dom.modelSelect.value = state.model;
+            updateKeyStatus();
+            dom.settingsModal.classList.add('active');
+        });
+
+        dom.modalCloseBtn.addEventListener('click', () => dom.settingsModal.classList.remove('active'));
+        dom.modalSaveBtn.addEventListener('click', saveSettings);
+        dom.modalClearKeyBtn.addEventListener('click', () => {
+            if (confirm('确定要清除所有保存的密钥吗？')) clearAllKeys();
+        });
+
+        dom.settingsModal.addEventListener('click', (e) => {
+            if (e.target === dom.settingsModal) dom.settingsModal.classList.remove('active');
+        });
+
+        // ---------- 初始化 ----------
+        loadSettings();
+
+        setTimeout(() => {
+            addSystemMessage('👋 欢迎！我是 DeepSeek Agent，可以帮你搜索、编程、生成图片、分析图片。');
+            addSystemMessage('💡 点击右上角 ⚙️ 配置 DeepSeek API Key 开始使用。');
+        }, 400);
+
+        console.log('🧠 DeepSeek AI Agent 已加载');
+        console.log('📦 工具列表:', TOOLS.map(t => t.function.name).join(', '));
+    </script>
+</body>
+</html>
